@@ -11,10 +11,13 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { aspectRatioOptions, defaultValues, transformationTypes } from "@/constants"
 import { CustomField } from "./CustomField"
 import { useState, useTransition } from "react"
-import { AspectRatioKey, debounce, deepMergeObjects } from "@/lib/utils"
+import { AspectRatioKey, debounce, deepMergeObjects, handleError } from "@/lib/utils"
 import { updateCredits } from "@/lib/actions/user.actions"
 import MediaUploader from "./MediaUploader"
 import TransformedImage from "./TransformedImage"
+import { getCldImageUrl } from "next-cloudinary"
+import { addImage, updateImage } from "@/lib/actions/image.actions"
+import { useRouter } from "next/navigation"
 
 export const formSchema = z.object({
   title: z.string(),
@@ -30,9 +33,9 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
   const [newTransformation, setNewTransformation] = useState<Transformations | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransforming, setIsTransforming] = useState(false);
-  const [transfomationConfig, setTransfomationConfig] = useState(config);
-
+  const [transformationConfig, setTransformationConfig] = useState(config);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const initialValues = data && action === "Update" ? {
     title: data?.title,
@@ -47,8 +50,70 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
     defaultValues: initialValues
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+
+    if (data || image) {
+      const transformationURL = getCldImageUrl({
+        width: image?.width,
+        height: image?.height,
+        src: image?.publicId,
+        ...transformationConfig
+      });
+
+      const imageData = {
+        title: values.title,
+        publicId: image?.publicId,
+        transformationType: type,
+        width: image?.width,
+        height: image?.height,
+        config: transformationConfig,
+        secureURL: image?.secureURL,
+        transformationURL: transformationURL,
+        aspectRatio: values.aspectRatio,
+        prompt: values.prompt,
+        color: values.color
+      }
+
+      if (action === "Add") {
+        try {
+          const newImage = await addImage({
+            image: imageData,
+            userId,
+            path: '/images'
+          });
+
+          if (newImage) {
+            form.reset();
+            setImage(data);
+            router.push(`/transformations/${newImage._id}`)
+          }
+        } catch(error) {
+          handleError(error);
+        }
+      }
+
+      if (action === "Update") {
+        try {
+          const updatedImage = await updateImage({
+            image: {
+              ...imageData,
+              _id: data._id
+            },
+            userId,
+            path: `/transformations/${data._id}`
+          });
+
+          if (updatedImage) {
+            router.push(`/transformations/${updatedImage._id}`)
+          }
+        } catch(error) {
+          handleError(error);
+        }
+      }
+    }
+
+    setIsSubmitting(false);
   }
 
   const onSelectFieldHandler = (value: string, OnChangeField: (value: string) => void) => {
@@ -84,7 +149,7 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
   const onTransformHandler = async () => {
     setIsTransforming(true);
 
-    deepMergeObjects(newTransformation, transfomationConfig);
+    deepMergeObjects(newTransformation, transformationConfig);
 
     setNewTransformation(null);
 
@@ -185,7 +250,7 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
             title={form.getValues().title}
             isTransforming={isTransforming}
             setIsTransforming={setIsTransforming}
-            transformationConfig={transfomationConfig}
+            transformationConfig={transformationConfig}
           />
         </div>
 

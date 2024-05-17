@@ -208,13 +208,13 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
               name="prompt"
               formLabel={type === "remove" ? "Object to remove" : "Object to recolor"}
               className="w-full"
-              render={(({ field }) => (
+              render={({ field }) => (
                 <Input 
                   value={field.value}
                   className="input-field"
                   onChange={(e) => onInputChangeHandler("prompt", e.target.value, type, field.onChange)}
                 />
-              ))}
+              )}
             />
 
             {type === "recolor" && (

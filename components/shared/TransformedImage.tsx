@@ -49,9 +49,11 @@ const TransformedImage = ({ image, type, title, isTransforming, setIsTransformin
             placeholder={dataUrl as PlaceholderValue}
             className="transformed-image"
             onLoad={() => {setIsTransforming && setIsTransforming(false)}}
-            onError={() => {debounce(() => {
-              setIsTransforming && setIsTransforming(false);
-            }, 8000)}}
+            onError={() => {
+              debounce(() => {
+                setIsTransforming && setIsTransforming(false);
+              }, 8000)()
+            }}
             {...transformationConfig}
           />
 
@@ -63,6 +65,7 @@ const TransformedImage = ({ image, type, title, isTransforming, setIsTransformin
                 width={50}
                 height={50}
               />
+              <p className="text-white/80">Please wait...</p>
             </div>
           )}
         </div>

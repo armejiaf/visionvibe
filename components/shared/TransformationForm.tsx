@@ -7,10 +7,10 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { aspectRatioOptions, defaultValues, transformationTypes } from "@/constants"
+import { Form } from "@/components/ui/form"
+import { aspectRatioOptions, creditFee, defaultValues, transformationTypes } from "@/constants"
 import { CustomField } from "./CustomField"
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { AspectRatioKey, debounce, deepMergeObjects, handleError } from "@/lib/utils"
 import { updateCredits } from "@/lib/actions/user.actions"
 import MediaUploader from "./MediaUploader"
@@ -18,6 +18,7 @@ import TransformedImage from "./TransformedImage"
 import { getCldImageUrl } from "next-cloudinary"
 import { addImage, updateImage } from "@/lib/actions/image.actions"
 import { useRouter } from "next/navigation"
+import { InsufficientCreditsModal } from "./InsufficientCreditsModal"
 
 export const formSchema = z.object({
   title: z.string(),
@@ -80,7 +81,7 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
           const newImage = await addImage({
             image: imageData,
             userId,
-            path: '/images'
+            path: '/'
           });
 
           if (newImage) {
@@ -116,7 +117,7 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
     setIsSubmitting(false);
   }
 
-  const onSelectFieldHandler = (value: string, OnChangeField: (value: string) => void) => {
+  const onSelectFieldHandler = (value: string, onChangeField: (value: string) => void) => {
     const imageSize = aspectRatioOptions[value as AspectRatioKey];
     
     setImage((prevState: any) => ({
@@ -128,7 +129,7 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
 
     setNewTransformation(transformationType.config);
 
-    return OnChangeField(value);
+    return onChangeField(value);
   };
 
   const onInputChangeHandler = (fieldName: string, value: string, type: string, onChangeField: (value: string) => void) => {
@@ -140,33 +141,39 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
           [fieldName === "prompt" ? "prompt" : "to"]: value
         }
       }));
+    }, 1000)();
 
-      return onChangeField(value);
-    }, 1000);
+    return onChangeField(value);
   };
 
-  //TODO: updateCredits function
   const onTransformHandler = async () => {
     setIsTransforming(true);
 
-    deepMergeObjects(newTransformation, transformationConfig);
+    setTransformationConfig(deepMergeObjects(newTransformation, transformationConfig));
 
     setNewTransformation(null);
 
     startTransition(async () => {
-      await updateCredits(userId, -1);
+      await updateCredits(userId, creditFee);
     })
   }
+
+  useEffect(() => {
+    if (image && (type === "restore" || type === "removeBackground")) {
+      setNewTransformation(transformationType.config);
+    }
+  }, [image, transformationType.config, type]);
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {creditBalance < Math.abs(creditFee) && <InsufficientCreditsModal />}
         <CustomField 
           control={form.control}
           name="title"
           formLabel="Image Title"
           className="w-full"
-          render={({ field }) => <Input {...field} className="input-field"/>}
+          render={({ field }) => <Input {...field} className="input-field" />}
         />
         
         {type === "fill" && (
@@ -178,8 +185,9 @@ const TransformationForm = ({ action, data = null, userId, type, creditBalance, 
             render={({ field }) => (
               <Select
                 onValueChange={(value) => onSelectFieldHandler(value, field.onChange)}
+                value={field.value}
               >
-                 <SelectTrigger className="select-field">
+                <SelectTrigger className="select-field">
                   <SelectValue placeholder="Select size" />
                 </SelectTrigger>
                 <SelectContent>

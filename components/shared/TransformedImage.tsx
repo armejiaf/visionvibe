@@ -1,12 +1,21 @@
-import { dataUrl, debounce, getImageSize } from "@/lib/utils";
-import { CldImage } from "next-cloudinary";
+"use client"
+
+import { dataUrl, debounce, download, getImageSize } from "@/lib/utils";
+import { CldImage, getCldImageUrl } from "next-cloudinary";
 import { PlaceholderValue } from "next/dist/shared/lib/get-img-props";
 import Image from "next/image";
 
 const TransformedImage = ({ image, type, title, isTransforming, setIsTransforming, transformationConfig, hasDownload = false }: TransformedImageProps ) => {
 
-  const downloadHandler = () => {
+  const downloadHandler = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
 
+    download(getCldImageUrl({
+      width: image?.width,
+      height: image?.height,
+      src: image?.publicId,
+      ...transformationConfig
+    }), title);
   };
 
   return (
@@ -35,13 +44,13 @@ const TransformedImage = ({ image, type, title, isTransforming, setIsTransformin
             width={getImageSize(type, image, "width")}
             height={getImageSize(type, image, "height")}
             src={image?.publicId}
-            alt={image.title}
+            alt={image?.title || "transformation"}
             sizes={"(max-width: 767px) 100vw, 50vw"}
             placeholder={dataUrl as PlaceholderValue}
             className="transformed-image"
             onLoad={() => {setIsTransforming && setIsTransforming(false)}}
             onError={() => {debounce(() => {
-              setIsTransforming && setIsTransforming(false)
+              setIsTransforming && setIsTransforming(false);
             }, 8000)}}
             {...transformationConfig}
           />
@@ -50,7 +59,7 @@ const TransformedImage = ({ image, type, title, isTransforming, setIsTransformin
             <div className="transforming-loader">
               <Image 
                 src="/assets/icons/spinner.svg"
-                alt="Transforming"
+                alt="spinner"
                 width={50}
                 height={50}
               />

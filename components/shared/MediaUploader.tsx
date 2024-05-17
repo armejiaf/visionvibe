@@ -6,7 +6,7 @@ import { CldImage, CldUploadWidget } from "next-cloudinary"
 import { PlaceholderValue } from "next/dist/shared/lib/get-img-props";
 import Image from "next/image";
 
-const MediaUploader = ({ onValueChange, setImage, publicId, image, type}: MediaUploaderProps) => {
+const MediaUploader = ({ onValueChange, setImage, publicId, image, type }: MediaUploaderProps) => {
   const { toast } = useToast();
 
   const onUploadSuccessHandler = (result: any) => {
@@ -19,7 +19,7 @@ const MediaUploader = ({ onValueChange, setImage, publicId, image, type}: MediaU
       secureURL: result?.info?.secure_url
     }));
 
-    onValueChange(result?.info?.publicId);
+    onValueChange(result?.info?.public_id)
 
     toast({
       title: "Image uploaded successfully",
@@ -66,7 +66,7 @@ const MediaUploader = ({ onValueChange, setImage, publicId, image, type}: MediaU
                 />
               </div>
             </>
-          ): (
+          ) : (
             <div className="media-uploader_cta" onClick={() => open()}>
               <div className="media-uploader_cta-image">
                 <Image 
@@ -80,8 +80,6 @@ const MediaUploader = ({ onValueChange, setImage, publicId, image, type}: MediaU
             </div>
           )}
         </div>
-        
-      
       )}
     </CldUploadWidget>
   )
